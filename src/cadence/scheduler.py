@@ -110,6 +110,23 @@ def decide(cfg: Config, state: State, now: float) -> Action:
 
 # --- Live execution ----------------------------------------------------------
 
+class MoveFailed(Exception):
+    """A movement command was ACKed but the desk did not move.
+
+    Observed live: after ~30+ min connected, the controller ACKs writes but
+    ignores movement commands; a fresh connection fixes it. Raising tears down
+    the connection so the reconnect loop can retry the transition cleanly.
+    """
+
+
+class CollisionDetected(Exception):
+    """The desk moved but settled far from target — likely an obstruction.
+
+    Never auto-retry into a possible obstruction: notify the user and back
+    off instead.
+    """
+
+
 class Captain:
     def __init__(self, cfg: Config, client: DeskClient):
         self.cfg = cfg
@@ -143,10 +160,14 @@ class Captain:
             return
         w = self.cfg.warning
         offset = self.cfg.calibration.offset_inches
-        up = protocol.inches_to_goto_mm(cur + w.tap_delta_inches, offset)
         back = protocol.inches_to_goto_mm(cur, offset)
+        # Compute the delta in mm with an 8mm floor: the controller's goto
+        # deadband swallows smaller moves (7mm confirmed ignored live).
+        delta_mm = max(8, round(w.tap_delta_inches * protocol.MM_PER_INCH))
+        up = back + delta_mm
         self._commanded_move = True
         try:
+            await self.client.stop()  # clear any stale goto session
             for _ in range(max(1, w.tap_count)):
                 await self.client.goto_mm(up)
                 await asyncio.sleep(w.tap_pause_ms / 1000)
@@ -156,12 +177,27 @@ class Captain:
             self._commanded_move = False
 
     async def move_to(self, target_inches: float, *, settle_timeout: float = 40.0) -> None:
-        """Issue a goto and hold the commanded-move flag until motion settles,
-        so our own height stream isn't mistaken for a manual move."""
+        """Issue a goto, verify the desk actually moves, and hold the
+        commanded-move flag until motion settles.
+
+        Raises MoveFailed if the controller ACKs but never moves (stale
+        connection) or the desk settles far from the target (collision)."""
         mm = protocol.inches_to_goto_mm(target_inches, self.cfg.calibration.offset_inches)
+        start = self.current_inches()
+        if start is not None and abs(start - target_inches) <= 0.3:
+            return  # already there; a goto this small is deadband anyway
         self._commanded_move = True
         try:
+            await self.client.stop()  # clear any stale goto session
             await self.client.goto_mm(mm)
+            if not await self._motion_started(start):
+                log.warning("goto %.1fin produced no movement; STOP + one retry", target_inches)
+                await self.client.stop()
+                await self.client.goto_mm(mm)
+                if not await self._motion_started(start):
+                    raise MoveFailed(f"desk ignored goto to {target_inches:.1f}in")
+
+            # Motion confirmed; now wait for it to settle (no change for 2s).
             last_raw = None
             stable = 0.0
             waited = 0.0
@@ -174,8 +210,27 @@ class Captain:
                 else:
                     stable = 0.0
                     last_raw = cur
+
+            final = self.current_inches()
+            if final is not None and abs(final - target_inches) > 1.0:
+                # Settled well short of target: obstruction/anti-collision.
+                raise CollisionDetected(
+                    f"desk settled at {final:.1f}in, expected {target_inches:.1f}in "
+                    "(possible obstruction)"
+                )
         finally:
             self._commanded_move = False
+
+    async def _motion_started(self, start_inches: float | None, wait: float = 4.0) -> bool:
+        """True once the height stream shows real movement from start."""
+        waited = 0.0
+        while waited < wait:
+            await asyncio.sleep(0.5)
+            waited += 0.5
+            cur = self.current_inches()
+            if start_inches is None or (cur is not None and abs(cur - start_inches) > 0.15):
+                return True
+        return False
 
     async def transition(self, state: State, target_posture: str, reason: str) -> bool:
         """Warn, safety-check, then move. Returns True if the move was issued."""
@@ -308,7 +363,16 @@ async def _run_connected(cfg: Config) -> None:
 
             if action.kind == "transition":
                 target = action.target_posture or opposite(st.posture)
-                moved = await captain.transition(st, target, action.reason)
+                try:
+                    moved = await captain.transition(st, target, action.reason)
+                except CollisionDetected as e:
+                    log.error("collision during transition: %s", e)
+                    notify.notify("cadence", f"Desk stopped short: {e}. Snoozing 5m.")
+                    st = load_state()
+                    st.pending = None
+                    st.snooze_until = time.time() + 300
+                    save_state(st)
+                    continue
                 # consume one-shot + reset cycle bookkeeping
                 st = load_state()
                 st.pending = None
@@ -317,6 +381,9 @@ async def _run_connected(cfg: Config) -> None:
                     st.posture = target
                     st.phase_started_at = time.time()
                     st.last_auto_move_at = time.time()
+                else:
+                    # Blocked by a safety guard; don't spin on it.
+                    await asyncio.sleep(POLL_CAP_SECONDS)
                 save_state(st)
                 continue
 

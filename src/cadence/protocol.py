@@ -45,6 +45,11 @@ CONFIRMED by supervised movement tests (2026-06-09):
     operation; treat a different value as a potential error indicator.
   - GOTO has a deadband: a 5mm (0.2in) move is silently ignored; 8mm
     (0.3in) executes reliably. Warning taps must use >= 0.3in deltas.
+  - STALE CONNECTIONS: after ~30+ min connected, the controller continued
+    to ACK writes and serve height notifications but IGNORED movement
+    commands. A STOP on a fresh connection restored movement. Defense:
+    send STOP before every goto, verify motion starts within ~4s, and
+    reconnect if a goto is ignored (scheduler.MoveFailed).
   - ANTI-COLLISION (observed live): if the desk meets resistance while
     descending it stops and backs UP ~1.8in, then settles. From the host
     side this looks like a commanded move whose height stream reverses
