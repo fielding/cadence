@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Test / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local runtime artifacts (state/logs live under ~/.local/state)
+*.log

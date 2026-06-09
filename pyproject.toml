@@ -1,0 +1,26 @@
+[project]
+name = "cadence"
+version = "0.1.0"
+description = "Local sit/stand desk captain for the Deskhaus Apex Pro (Jiecang/Uplift BLE)"
+readme = "README.md"
+authors = [
+    { name = "Fielding Johnston", email = "fielding@justfielding.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "bleak>=0.22",      # cross-platform BLE (CoreBluetooth on macOS)
+    "typer>=0.12",      # CLI
+    "tomli-w>=1.0",     # write TOML (stdlib tomllib is read-only)
+]
+
+[project.scripts]
+cadence = "cadence.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.10.11,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]

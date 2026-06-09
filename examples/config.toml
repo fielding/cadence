@@ -1,0 +1,57 @@
+# cadence config — copy to ~/.config/cadence/config.toml and edit.
+# All values shown are the built-in defaults.
+
+[schedule]
+sit_minutes = 45
+stand_minutes = 15
+warning_seconds = 15
+enabled = true
+
+[heights]
+sit_inches = 26.8
+stand_inches = 44.9
+
+[warning]
+enabled = true
+# "notify" (desktop notification + sound, safest), "tap" (physical nudge),
+# or "both". Start with "notify" until taps are proven safe on your desk.
+mode = "notify"
+tap_count = 2
+tap_delta_inches = 0.2
+tap_pause_ms = 500
+sound = true
+
+[safety]
+min_height_inches = 22.0
+max_height_inches = 50.0
+require_manual_enable_on_start = true
+do_not_move_if_user_recently_moved_desk = true
+recent_manual_move_grace_seconds = 300
+# Refuse absolute moves when the current height can't be read.
+refuse_move_without_height = true
+
+[working_hours]
+enabled = false
+days = ["mon", "tue", "wed", "thu", "fri"]
+start = "09:00"
+end = "18:00"
+
+[behavior]
+snooze_minutes = 15
+reset_timer_on_manual_move = true
+
+# Maps raw device units to inches: inches = raw / raw_units_per_inch + offset_inches.
+# Apex Pro firmware reports 0.1 inch units (confirmed live). Run
+# `cadence calibrate <inches>` with the desk at a tape-measured height if the
+# display itself has drifted.
+[calibration]
+raw_units_per_inch = 10.0
+offset_inches = 0.0
+
+# Filled in automatically by `cadence scan`.
+[device]
+# address = "XX:XX:XX:XX:XX:XX"
+# name = "Apex Pro"
+# service_uuid = "0000fe60-0000-1000-8000-00805f9b34fb"
+# command_char_uuid = "0000fe61-0000-1000-8000-00805f9b34fb"
+# notify_char_uuid = "0000fe62-0000-1000-8000-00805f9b34fb"
