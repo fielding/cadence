@@ -43,6 +43,8 @@ CONFIRMED by supervised movement tests (2026-06-09):
     goto 680mm -> echo F2 F2 1B 02 02 A8 C7 7E) — usable as a delivery ACK.
   - The 3rd height-payload byte ("status") reads 0x07 during all normal
     operation; treat a different value as a potential error indicator.
+  - GOTO has a deadband: a 5mm (0.2in) move is silently ignored; 8mm
+    (0.3in) executes reliably. Warning taps must use >= 0.3in deltas.
   - ANTI-COLLISION (observed live): if the desk meets resistance while
     descending it stops and backs UP ~1.8in, then settles. From the host
     side this looks like a commanded move whose height stream reverses

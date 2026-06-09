@@ -39,9 +39,12 @@ class Warning:
     # "tap" = small physical nudge, "notify" = desktop notification + sound,
     # "both" = notify then tap. Default to the safest option.
     mode: str = "notify"
-    tap_count: int = 2
-    tap_delta_inches: float = 0.2
-    tap_pause_ms: int = 500
+    # One up-and-back nudge reads clearly as a warning; two felt excessive.
+    tap_count: int = 1
+    # Live-tested 2026-06-09: 0.2in (5mm) is swallowed by the controller's
+    # goto deadband; 0.3in (8mm) reliably produces a visible nudge.
+    tap_delta_inches: float = 0.3
+    tap_pause_ms: int = 1200
     sound: bool = True
 
 

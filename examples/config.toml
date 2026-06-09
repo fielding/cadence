@@ -16,9 +16,11 @@ enabled = true
 # "notify" (desktop notification + sound, safest), "tap" (physical nudge),
 # or "both". Start with "notify" until taps are proven safe on your desk.
 mode = "notify"
-tap_count = 2
-tap_delta_inches = 0.2
-tap_pause_ms = 500
+# one up-and-back nudge per warning; raise if you want a more insistent knock
+tap_count = 1
+# 0.2in is below the Jiecang goto deadband (~5mm ignored); 0.3in works.
+tap_delta_inches = 0.3
+tap_pause_ms = 1200
 sound = true
 
 [safety]
