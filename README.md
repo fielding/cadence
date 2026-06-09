@@ -3,7 +3,7 @@
 A local "sit/stand captain" for the **Deskhaus Apex Pro** standing desk. It
 controls the desk over Bluetooth LE (Jiecang/Uplift-style controller) and
 alternates between your saved sitting and standing heights on a configurable
-schedule — giving a subtle warning before every move.
+schedule, with a subtle warning before every move.
 
 > ⚠️ **This moves physical furniture.** Start in the safe default mode
 > (desktop-notification warnings, no auto-movement until you arm it) and prove
@@ -12,8 +12,8 @@ schedule — giving a subtle warning before every move.
 ## Status
 
 Working and in daily use against a Deskhaus Apex Pro (Jiecang `L-BTMEB95`
-BLE module). The full protocol — height polling and decoding, continuous
-up/down, absolute moves, warning taps, collision behavior — has been verified
+BLE module). The full protocol (height polling and decoding, continuous
+up/down, absolute moves, warning taps, collision behavior) has been verified
 live on that hardware. Details and quirks are documented at the top of
 [`src/cadence/protocol.py`](src/cadence/protocol.py).
 
@@ -25,19 +25,19 @@ protocol. `cadence scan` looks for the known service UUIDs (`fe60`, `ff00`,
 `ff12`) and picks the command/notify characteristics automatically.
 
 **But verify before you trust it.** Firmware variants differ in ways that
-matter — this very desk reports heights in 0.1-inch units while accepting
+matter: this very desk reports heights in 0.1-inch units while accepting
 move targets in millimeters, despite community docs claiming 0.1mm for both.
 The safe bring-up order:
 
-1. `cadence scan` — find the desk, save its identity to config.
-2. `cadence status` — confirm the reported height matches the desk display.
-3. `cadence up` / `cadence stop` — one supervised nudge; confirm direction.
-4. `cadence goto <near current height>` — small move; confirm it lands right.
-5. Only then enable the daemon — and keep `require_manual_enable_on_start`.
+1. `cadence scan`: find the desk, save its identity to config.
+2. `cadence status`: confirm the reported height matches the desk display.
+3. `cadence up` then `cadence stop`: one supervised nudge, confirm direction.
+4. `cadence goto <near current height>`: small move, confirm it lands right.
+5. Only then enable the daemon, and keep `require_manual_enable_on_start`.
 
-If your desk behaves differently, please open an issue with your `cadence
-scan` output and a few captured frames — the protocol layer is built to
-absorb variants.
+If your desk behaves differently, open an issue with your `cadence scan`
+output and a few captured frames. The protocol layer is built to absorb
+variants.
 
 ## Install
 
@@ -76,7 +76,7 @@ cadence calibrate 26.8        # maps the current raw reading to 26.8 inches
 ```bash
 cadence daemon                # run in foreground (logs to ~/.local/state/cadence/)
 cadence resume                # arm automation (daemon starts DISARMED)
-cadence pause                 # kill switch — stop automating, leave desk as-is
+cadence pause                 # kill switch: stop automating, leave desk as-is
 cadence next                  # force the next sit<->stand transition now
 cadence snooze 15             # snooze automation 15 minutes
 cadence status                # see posture, phase timer, manual-move state
@@ -135,7 +135,7 @@ uv run pytest                 # unit tests (pure logic, no desk required)
 
 - First-run verification wizard (`cadence setup`) so unfamiliar desks are
   bring-up-checked before absolute moves are enabled.
-- `cadence report` — paste-ready GATT + frame dump for compatibility issues.
+- `cadence report`: paste-ready GATT + frame dump for compatibility issues.
 - Cross-platform notifications (currently macOS `osascript`/`afplay`) and a
   systemd unit example alongside launchd.
 - Driver abstraction for non-Jiecang controllers (Linak-based Jarvis/Fully).
@@ -143,4 +143,4 @@ uv run pytest                 # unit tests (pure logic, no desk required)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
