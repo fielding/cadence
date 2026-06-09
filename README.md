@@ -92,6 +92,12 @@ The default cycle: **sit 45m → warn → stand → stand 15m → warn → sit �
 Edit `~/.config/cadence/config.toml` to change timing, heights, warning mode,
 safety bounds, and working hours. See [`examples/config.toml`](examples/config.toml).
 
+The captain also watches whether you're actually at the computer (time since
+last keyboard/mouse input). Walk away and the cycle holds; come back and the
+current phase restarts instead of firing an overdue move at you. Keep-awake
+apps like Caffeine don't confuse this check, since they keep the display on
+without faking input. Configure under `[presence]`.
+
 ## Safety model
 
 - Never moves outside `[min_height_inches, max_height_inches]` (targets are clamped).

@@ -148,6 +148,12 @@ def status(verbose: bool = typer.Option(False, "--verbose", "-v")):
     if st.last_manual_move_at:
         ago = (time.time() - st.last_manual_move_at) / 60
         typer.echo(f"          last manual move {ago:.1f}m ago")
+    if cfg.presence.enabled:
+        from .presence import hid_idle_seconds
+        idle = hid_idle_seconds()
+        if idle is not None:
+            away = idle >= cfg.presence.idle_threshold_minutes * 60
+            typer.echo(f"Presence: idle {idle:.0f}s ({'away' if away else 'active'})")
 
     if not cfg.device.address:
         return

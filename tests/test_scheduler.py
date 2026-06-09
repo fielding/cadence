@@ -105,3 +105,42 @@ def test_interference_detection_windows():
     assert drops == [300.0]
     # Two drops are not enough to call it interference.
     assert not scheduler.interference_suspected([10.0, 20.0], now=30.0)
+
+
+def test_idle_user_blocks_transition():
+    cfg = Config()
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    # Phase elapsed but the user has been idle past the threshold.
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=11 * 60)
+    assert action.kind == "sleep"
+    assert "idle" in action.reason
+
+
+def test_active_user_still_transitions():
+    cfg = Config()
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=30.0)
+    assert action.kind == "transition"
+
+
+def test_unknown_idle_fails_open():
+    cfg = Config()
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=None)
+    assert action.kind == "transition"
+
+
+def test_presence_disabled_ignores_idle():
+    cfg = Config()
+    cfg.presence.enabled = False
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=9999.0)
+    assert action.kind == "transition"

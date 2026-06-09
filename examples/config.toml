@@ -42,6 +42,15 @@ end = "18:00"
 snooze_minutes = 15
 reset_timer_on_manual_move = true
 
+# Skip transitions when nobody is at the computer, judged by time since the
+# last physical keyboard/mouse input (HID idle). Keep-awake apps like Caffeine
+# hold the display on but don't fake input, so this stays accurate with them.
+[presence]
+enabled = true
+idle_threshold_minutes = 10
+# restart the current phase when you return, instead of firing an overdue move
+reset_timer_on_return = true
+
 # Maps raw device units to inches: inches = raw / raw_units_per_inch + offset_inches.
 # Apex Pro firmware reports 0.1 inch units (confirmed live). Run
 # `cadence calibrate <inches>` with the desk at a tape-measured height if the

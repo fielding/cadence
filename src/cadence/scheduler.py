@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 
-from . import notify, protocol, safety
+from . import notify, presence, protocol, safety
 from .ble import DeskClient
 from .config import Config
 from .state import State, load as load_state, save as save_state
@@ -76,13 +76,24 @@ class Action:
     reason: str = ""
 
 
-def decide(cfg: Config, state: State, now: float) -> Action:
-    """Decide the next action. Never performs side effects."""
+def decide(cfg: Config, state: State, now: float, idle_seconds: float | None = None) -> Action:
+    """Decide the next action. Never performs side effects.
+
+    idle_seconds is the time since last user input (None = unknown, treated
+    as present so a broken probe never silently disables the schedule).
+    """
     if not state.enabled or not cfg.schedule.enabled or state.paused:
         return Action("sleep", POLL_CAP_SECONDS, reason="disabled/paused")
 
     if not within_working_hours(cfg, now):
         return Action("sleep", POLL_CAP_SECONDS, reason="outside working hours")
+
+    if (
+        cfg.presence.enabled
+        and idle_seconds is not None
+        and idle_seconds >= cfg.presence.idle_threshold_minutes * 60
+    ):
+        return Action("sleep", POLL_CAP_SECONDS, reason="user idle/away")
 
     # Manual one-shot: force the next transition now.
     if state.pending == "next":
@@ -374,6 +385,7 @@ async def _run_connected(cfg: Config) -> None:
         log.info("connected to desk %s", cfg.device.address)
         await client.read_height(wait=3.0)  # prime latest_height
         last_poll = time.time()
+        was_idle = False
         while True:
             st = load_state()
             now = time.time()
@@ -384,7 +396,19 @@ async def _run_connected(cfg: Config) -> None:
                 await client.request_limits()
                 last_poll = now
 
-            action = decide(cfg, st, now)
+            idle = presence.hid_idle_seconds() if cfg.presence.enabled else None
+            is_idle = (
+                idle is not None
+                and idle >= cfg.presence.idle_threshold_minutes * 60
+            )
+            if was_idle and not is_idle:
+                log.info("user returned after idle; resetting phase timer")
+                if cfg.presence.reset_timer_on_return and st.posture in ("sit", "stand"):
+                    st.phase_started_at = now
+                    save_state(st)
+            was_idle = is_idle
+
+            action = decide(cfg, st, now, idle_seconds=idle)
 
             if action.kind == "sleep":
                 await asyncio.sleep(max(1.0, min(action.seconds, KEEPALIVE_POLL_SECONDS)))

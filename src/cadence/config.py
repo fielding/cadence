@@ -74,6 +74,21 @@ class Behavior:
 
 
 @dataclass
+class Presence:
+    """Skip transitions when nobody is at the computer.
+
+    Uses HID idle time (last physical input), which keep-awake apps like
+    Caffeine do not affect — see presence.py.
+    """
+
+    enabled: bool = True
+    idle_threshold_minutes: float = 10.0
+    # Restart the current phase when the user returns, so coming back after
+    # hours away doesn't trigger an immediate overdue transition.
+    reset_timer_on_return: bool = True
+
+
+@dataclass
 class Calibration:
     """Maps raw device height units to inches.
 
@@ -109,6 +124,7 @@ class Config:
     safety: Safety = field(default_factory=Safety)
     working_hours: WorkingHours = field(default_factory=WorkingHours)
     behavior: Behavior = field(default_factory=Behavior)
+    presence: Presence = field(default_factory=Presence)
     calibration: Calibration = field(default_factory=Calibration)
     device: Device = field(default_factory=Device)
 
@@ -122,6 +138,7 @@ _SECTION_TYPES: dict[str, type] = {
     "safety": Safety,
     "working_hours": WorkingHours,
     "behavior": Behavior,
+    "presence": Presence,
     "calibration": Calibration,
     "device": Device,
 }
