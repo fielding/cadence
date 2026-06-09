@@ -3,6 +3,7 @@ name = "cadence"
 version = "0.1.0"
 description = "Local sit/stand desk captain for the Deskhaus Apex Pro (Jiecang/Uplift BLE)"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Fielding Johnston", email = "fielding@justfielding.com" }
 ]
