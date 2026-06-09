@@ -94,3 +94,14 @@ def test_safety_respects_recent_manual_move():
     st = State(last_manual_move_at=1000.0)
     d = safety.check_move(cfg, st, 30.0, height_known=True, is_moving=False, now=1010.0)
     assert not d.allowed
+
+
+def test_interference_detection_windows():
+    drops = [100.0, 200.0, 300.0]
+    assert scheduler.interference_suspected(drops, now=350.0)
+    # Old drops age out of the window and stop counting.
+    drops = [100.0, 200.0, 300.0]
+    assert not scheduler.interference_suspected(drops, now=200.0 + 601.0)
+    assert drops == [300.0]
+    # Two drops are not enough to call it interference.
+    assert not scheduler.interference_suspected([10.0, 20.0], now=30.0)

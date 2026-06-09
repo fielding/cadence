@@ -125,6 +125,20 @@ examples/         default config
 The protocol details (UUIDs, opcodes, frame format) and the BLE references that
 informed them are documented at the top of `src/cadence/protocol.py`.
 
+## Troubleshooting
+
+**Connection keeps dropping (reconnects every few minutes).** Another BLE
+central is probably fighting cadence for the desk, usually the vendor phone
+app (AiDesk and friends) auto-reconnecting in the background. Close the app
+or turn off Bluetooth on phones/tablets that have paired with the desk. The
+daemon detects this pattern (3+ drops in 10 minutes) and sends a desktop
+notification with the same advice. Isolated drops are normal BLE behavior;
+the daemon reconnects within ~30 seconds and the schedule is unaffected.
+
+**Desk ignores movement commands but height still updates.** Known controller
+quirk on long-lived connections. The daemon handles it: it verifies motion
+after every command and reconnects if the desk went deaf.
+
 ## Development
 
 ```bash

@@ -274,6 +274,28 @@ class Captain:
 RECONNECT_DELAY_SECONDS = 15.0
 KEEPALIVE_POLL_SECONDS = 60.0
 
+# Repeated rapid drops usually mean another BLE central (typically the vendor
+# phone app) is fighting for the desk connection. Observed live: with the
+# AiDesk-paired phone in range, the link dropped every 1-8 minutes; with
+# phone Bluetooth off it held indefinitely.
+INTERFERENCE_WINDOW_SECONDS = 600.0
+INTERFERENCE_DROP_THRESHOLD = 3
+INTERFERENCE_NOTIFY_COOLDOWN_SECONDS = 1800.0
+INTERFERENCE_HINT = (
+    "Desk Bluetooth keeps dropping. Another device may be competing for the "
+    "connection - close desk apps (e.g. AiDesk) or turn off Bluetooth on "
+    "phones/tablets that have paired with the desk."
+)
+
+
+def interference_suspected(drop_times: list[float], now: float) -> bool:
+    """True when enough recent drops cluster inside the detection window.
+
+    Mutates drop_times to discard entries older than the window.
+    """
+    drop_times[:] = [t for t in drop_times if now - t < INTERFERENCE_WINDOW_SECONDS]
+    return len(drop_times) >= INTERFERENCE_DROP_THRESHOLD
+
 
 async def run(cfg: Config) -> None:
     """Daemon loop. Connects to the desk and drives the schedule, reconnecting
@@ -293,12 +315,26 @@ async def run(cfg: Config) -> None:
     st.daemon_pid = _getpid()
     save_state(st)
 
+    drop_times: list[float] = []
+    last_interference_warn = 0.0
     while True:
         try:
             await _run_connected(cfg)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 — BLE drops, timeouts, etc.
+            now = time.time()
+            drop_times.append(now)
+            if (
+                interference_suspected(drop_times, now)
+                and now - last_interference_warn > INTERFERENCE_NOTIFY_COOLDOWN_SECONDS
+            ):
+                last_interference_warn = now
+                log.warning(
+                    "%d drops in %.0f min — %s",
+                    len(drop_times), INTERFERENCE_WINDOW_SECONDS / 60, INTERFERENCE_HINT,
+                )
+                notify.notify("cadence", INTERFERENCE_HINT)
             log.warning("desk connection lost (%s); reconnecting in %.0fs",
                         e, RECONNECT_DELAY_SECONDS)
             await asyncio.sleep(RECONNECT_DELAY_SECONDS)
