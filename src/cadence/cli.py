@@ -213,11 +213,33 @@ def stop():
 
 
 @app.command()
-def goto(inches: float, verbose: bool = typer.Option(False, "--verbose", "-v")):
+def setup():
+    """First-run wizard: verify the desk protocol before enabling moves."""
+    logging_setup.setup()
+    from . import setup_wizard
+
+    setup_wizard.run_wizard()
+
+
+@app.command()
+def goto(
+    inches: float,
+    force: bool = typer.Option(
+        False, "--force", help="Move even though the desk hasn't passed `cadence setup`."
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
     """Move the desk to an absolute height in inches (safety-checked)."""
     logging_setup.setup(verbose)
     cfg = _load()
     _require_device(cfg)
+    if not cfg.device.verified and not force:
+        typer.secho(
+            "This desk hasn't passed verification. Run `cadence setup` "
+            "(or use --force if you know the protocol matches).",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
     from . import safety
 

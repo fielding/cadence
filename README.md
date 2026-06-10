@@ -31,8 +31,9 @@ frame protocol. `cadence scan` looks for the known service UUIDs (`fe60`,
 
 But verify before you trust it. Firmware variants lie in ways that matter:
 my desk reports heights in 0.1-inch units while accepting move targets in
-millimeters, and the community docs swore both were 0.1mm. The safe bring-up
-order:
+millimeters, and the community docs swore both were 0.1mm. `cadence setup`
+walks you through this interactively and unlocks absolute moves when the
+checks pass. The manual version of the same order:
 
 1. `cadence scan`: find the desk, save its identity to config.
 2. `cadence status`: confirm the reported height matches the desk display.
@@ -62,10 +63,18 @@ uv tool install --editable .
 ```bash
 cadence init-config           # write ~/.config/cadence/config.toml
 cadence scan                  # find the desk, save its BLE address
+cadence setup                 # supervised verification wizard (required once)
 cadence status                # connect + read current height
 cadence goto 26.8             # move to sitting height (safety-checked)
 cadence goto 44.9             # move to standing height
 ```
+
+`cadence setup` walks the bring-up checklist from above interactively: it checks
+the height decoding against your desk's display (and fixes the unit scale if
+they disagree), runs one supervised nudge, then one small verified absolute
+move. Absolute moves and the daemon are locked until a desk passes it, and
+scanning a different desk resets the lock. `goto --force` exists if you've
+proven the protocol yourself.
 
 ### Calibrate (recommended)
 
@@ -169,8 +178,6 @@ uv run pytest                 # unit tests (pure logic, no desk required)
 
 ## Roadmap
 
-- First-run verification wizard (`cadence setup`) so unfamiliar desks get
-  bring-up-checked before absolute moves are enabled.
 - `cadence report`: paste-ready GATT + frame dump for compatibility issues.
 - Cross-platform notifications (currently macOS `osascript`/`afplay`) and a
   systemd unit example alongside launchd.

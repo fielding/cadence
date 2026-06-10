@@ -71,3 +71,12 @@ def test_config_ignores_unknown_keys(tmp_path):
     path.write_text("[schedule]\nsit_minutes = 30\nnot_a_real_key = true\n")
     cfg = cfgmod.load(path)
     assert cfg.schedule.sit_minutes == 30
+
+
+def test_device_verified_defaults_false_and_round_trips(tmp_path):
+    path = tmp_path / "config.toml"
+    cfg = cfgmod.Config()
+    assert cfg.device.verified is False
+    cfg.device.verified = True
+    cfgmod.save(cfg, path)
+    assert cfgmod.load(path).device.verified is True

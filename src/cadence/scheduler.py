@@ -328,6 +328,12 @@ async def run(cfg: Config) -> None:
     forever if the BLE link drops."""
     if cfg.device.address is None:
         raise SystemExit("no device configured — run `cadence scan` first")
+    if not cfg.device.verified:
+        raise SystemExit(
+            "desk has not passed verification — run `cadence setup` first "
+            "(or set device.verified = true in config if you've proven the "
+            "protocol yourself)"
+        )
 
     # Arm-on-start policy: state.enabled gates movement. require_manual_enable
     # means the daemon starts disarmed until `cadence resume`.

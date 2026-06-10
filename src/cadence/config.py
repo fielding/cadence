@@ -119,6 +119,10 @@ class Device:
     service_uuid: str | None = None
     command_char_uuid: str | None = None
     notify_char_uuid: str | None = None
+    # Set by `cadence setup` after the supervised bring-up checks pass.
+    # Absolute moves and the daemon require it; scan resets it when it saves
+    # a different desk.
+    verified: bool = False
 
 
 @dataclass
