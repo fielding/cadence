@@ -441,10 +441,23 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                 and idle >= cfg.presence.idle_threshold_minutes * 60
             )
             if was_idle and not is_idle:
-                log.info("user returned after idle; resetting phase timer")
+                # Never trust remembered posture across a break: the desk may
+                # have moved (or a transition collided) while the user was
+                # away. Re-derive it from the actual height so the fresh phase
+                # matches reality.
+                cur = captain.current_inches()
+                derived = nearest_posture(cfg, cur) if cur is not None else st.posture
+                if derived != st.posture:
+                    log.info(
+                        "user returned; posture corrected %s -> %s (desk at %.1fin)",
+                        st.posture, derived, cur,
+                    )
+                else:
+                    log.info("user returned after idle; resetting phase timer")
+                st.posture = derived
                 if cfg.presence.reset_timer_on_return and st.posture in ("sit", "stand"):
                     st.phase_started_at = now
-                    save_state(st)
+                save_state(st)
             was_idle = is_idle
 
             action = decide(cfg, st, now, idle_seconds=idle)

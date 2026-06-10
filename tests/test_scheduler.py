@@ -187,3 +187,11 @@ def test_sleep_until_woken_returns_early_on_signal():
     elapsed = asyncio.run(scenario())
     assert elapsed < 1.0  # woke early, didn't sleep the full 5s
     # event is cleared for the next sleep
+
+
+def test_nearest_posture_classifies_collision_limbo_as_stand():
+    cfg = Config()  # sit 26.8, stand 44.9
+    # A collided rise that parked at 41.6 is much closer to standing.
+    assert scheduler.nearest_posture(cfg, 41.6) == "stand"
+    assert scheduler.nearest_posture(cfg, 30.0) == "sit"
+    assert scheduler.nearest_posture(cfg, None) == "sit"  # safe default
