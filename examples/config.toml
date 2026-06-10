@@ -50,6 +50,10 @@ enabled = true
 idle_threshold_minutes = 10
 # restart the current phase when you return, instead of firing an overdue move
 reset_timer_on_return = true
+# a due transition only fires if you've touched the keyboard/mouse this
+# recently; otherwise it holds and fires shortly after you're back, so short
+# breaks (bathroom, coffee) don't get a desk moving for an empty room
+active_threshold_minutes = 2
 
 # Maps raw device units to inches: inches = raw / raw_units_per_inch + offset_inches.
 # Apex Pro firmware reports 0.1 inch units (confirmed live). Run

@@ -144,3 +144,30 @@ def test_presence_disabled_ignores_idle():
     st = _armed_state(posture="sit", phase_started_at=start)
     action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=9999.0)
     assert action.kind == "transition"
+
+
+def test_due_transition_holds_without_recent_activity():
+    cfg = Config()  # active threshold 2m, away threshold 10m
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    # 5 minutes idle: not away, but not at the desk either.
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=5 * 60)
+    assert action.kind == "sleep"
+    assert "activity" in action.reason
+
+
+def test_due_transition_fires_after_return():
+    cfg = Config()
+    start = 1000.0
+    elapsed = cfg.schedule.sit_minutes * 60 + 1
+    st = _armed_state(posture="sit", phase_started_at=start)
+    action = scheduler.decide(cfg, st, now=start + elapsed, idle_seconds=10.0)
+    assert action.kind == "transition"
+
+
+def test_pending_next_also_waits_for_activity():
+    cfg = Config()
+    st = _armed_state(posture="stand", phase_started_at=1000.0, pending="next")
+    action = scheduler.decide(cfg, st, now=1001.0, idle_seconds=5 * 60)
+    assert action.kind == "sleep"

@@ -95,8 +95,19 @@ def decide(cfg: Config, state: State, now: float, idle_seconds: float | None = N
     ):
         return Action("sleep", POLL_CAP_SECONDS, reason="user idle/away")
 
+    # Below the away threshold, but still don't move the desk for an empty
+    # room: a due transition fires only on recent input. Held transitions
+    # fire within one poll tick of the user returning.
+    recently_active = (
+        not cfg.presence.enabled
+        or idle_seconds is None
+        or idle_seconds <= cfg.presence.active_threshold_minutes * 60
+    )
+
     # Manual one-shot: force the next transition now.
     if state.pending == "next":
+        if not recently_active:
+            return Action("sleep", POLL_CAP_SECONDS, reason="due, waiting for user activity")
         cur = state.posture if state.posture in ("sit", "stand") else "sit"
         return Action("transition", target_posture=opposite(cur), reason="manual next")
 
@@ -111,6 +122,9 @@ def decide(cfg: Config, state: State, now: float, idle_seconds: float | None = N
     remaining = phase_seconds_for(cfg, state.posture) - elapsed
     if remaining > 0:
         return Action("sleep", min(remaining, POLL_CAP_SECONDS), reason="phase in progress")
+
+    if not recently_active:
+        return Action("sleep", POLL_CAP_SECONDS, reason="due, waiting for user activity")
 
     return Action(
         "transition",

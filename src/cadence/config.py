@@ -86,6 +86,11 @@ class Presence:
     # Restart the current phase when the user returns, so coming back after
     # hours away doesn't trigger an immediate overdue transition.
     reset_timer_on_return: bool = True
+    # A due transition fires only if the user touched the keyboard/mouse this
+    # recently. Otherwise it holds and fires shortly after they're back, so
+    # the desk never moves for an empty room during a short break that the
+    # longer idle threshold wouldn't catch.
+    active_threshold_minutes: float = 2.0
 
 
 @dataclass

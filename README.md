@@ -98,8 +98,10 @@ Edit `~/.config/cadence/config.toml` for timing, heights, warning mode, safety
 bounds, and working hours. See [`examples/config.toml`](examples/config.toml).
 
 The captain also watches whether you're actually at the computer, judged by
-time since your last keyboard or mouse input. Walk away and the cycle holds.
-Come back and the current phase restarts instead of firing an overdue move at
+time since your last keyboard or mouse input. A due move only fires if you've
+been active in the last couple of minutes, so a bathroom break doesn't come
+back to a surprise standing desk. Gone longer and the cycle holds entirely;
+come back and the current phase restarts instead of firing an overdue move at
 you the second the mouse twitches. Keep-awake apps like Caffeine don't
 confuse this check... they keep the display on, but they don't fake input.
 Configure under `[presence]`.
