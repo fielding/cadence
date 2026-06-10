@@ -344,7 +344,24 @@ def _set_state(**changes):
     def apply(s: statemod.State):
         for k, v in changes.items():
             setattr(s, k, v)
-    return statemod.mutate(apply)
+    st = statemod.mutate(apply)
+    _wake_daemon(st)
+    return st
+
+
+def _wake_daemon(st: statemod.State) -> None:
+    """Nudge the daemon (SIGUSR1) so control commands act immediately
+    instead of waiting out its poll sleep. Best-effort: if the daemon isn't
+    running, the state change still applies on its next start."""
+    import os
+    import signal
+
+    if not st.daemon_pid:
+        return
+    try:
+        os.kill(st.daemon_pid, signal.SIGUSR1)
+    except (ProcessLookupError, PermissionError):
+        pass
 
 
 @app.command()

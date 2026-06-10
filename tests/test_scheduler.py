@@ -171,3 +171,19 @@ def test_pending_next_also_waits_for_activity():
     st = _armed_state(posture="stand", phase_started_at=1000.0, pending="next")
     action = scheduler.decide(cfg, st, now=1001.0, idle_seconds=5 * 60)
     assert action.kind == "sleep"
+
+
+def test_sleep_until_woken_returns_early_on_signal():
+    import asyncio
+    import time as _time
+
+    async def scenario():
+        wake = asyncio.Event()
+        asyncio.get_running_loop().call_later(0.05, wake.set)
+        t0 = _time.monotonic()
+        await scheduler._sleep_until_woken(wake, seconds=5.0)
+        return _time.monotonic() - t0
+
+    elapsed = asyncio.run(scenario())
+    assert elapsed < 1.0  # woke early, didn't sleep the full 5s
+    # event is cleared for the next sleep

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -340,11 +341,20 @@ async def run(cfg: Config) -> None:
     st.daemon_pid = _getpid()
     save_state(st)
 
+    # CLI control commands (next/pause/resume/snooze) send SIGUSR1 after
+    # writing state so the daemon reacts immediately instead of waiting out
+    # its poll sleep.
+    wake = asyncio.Event()
+    try:
+        asyncio.get_running_loop().add_signal_handler(signal.SIGUSR1, wake.set)
+    except (NotImplementedError, ValueError):  # non-unix or nested loop
+        pass
+
     drop_times: list[float] = []
     last_interference_warn = 0.0
     while True:
         try:
-            await _run_connected(cfg)
+            await _run_connected(cfg, wake)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001 — BLE drops, timeouts, etc.
@@ -365,7 +375,16 @@ async def run(cfg: Config) -> None:
             await asyncio.sleep(RECONNECT_DELAY_SECONDS)
 
 
-async def _run_connected(cfg: Config) -> None:
+async def _sleep_until_woken(wake: asyncio.Event, seconds: float) -> None:
+    """Sleep, but return immediately if a control signal arrives."""
+    try:
+        await asyncio.wait_for(wake.wait(), timeout=seconds)
+        wake.clear()
+    except asyncio.TimeoutError:
+        pass
+
+
+async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
     """One connection lifetime: connect and drive the schedule until the link
     breaks (exception) — the caller handles reconnect."""
 
@@ -425,7 +444,9 @@ async def _run_connected(cfg: Config) -> None:
             action = decide(cfg, st, now, idle_seconds=idle)
 
             if action.kind == "sleep":
-                await asyncio.sleep(max(1.0, min(action.seconds, KEEPALIVE_POLL_SECONDS)))
+                await _sleep_until_woken(
+                    wake, max(1.0, min(action.seconds, KEEPALIVE_POLL_SECONDS))
+                )
                 continue
 
             if action.kind == "establish":
@@ -457,7 +478,7 @@ async def _run_connected(cfg: Config) -> None:
                     st.last_auto_move_at = time.time()
                 else:
                     # Blocked by a safety guard; don't spin on it.
-                    await asyncio.sleep(POLL_CAP_SECONDS)
+                    await _sleep_until_woken(wake, POLL_CAP_SECONDS)
                 save_state(st)
                 continue
 
