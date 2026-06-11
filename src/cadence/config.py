@@ -57,6 +57,9 @@ class Safety:
     recent_manual_move_grace_seconds: float = 300.0
     # If the desk height cannot be read, refuse absolute moves entirely.
     refuse_move_without_height: bool = True
+    # After this many consecutive collisions, pause automation entirely and
+    # notify, instead of retrying into the obstruction every snooze cycle.
+    collision_pause_threshold: int = 3
 
 
 @dataclass

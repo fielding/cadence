@@ -80,3 +80,15 @@ def test_device_verified_defaults_false_and_round_trips(tmp_path):
     cfg.device.verified = True
     cfgmod.save(cfg, path)
     assert cfgmod.load(path).device.verified is True
+
+
+def test_collision_streak_round_trips_and_defaults_zero(tmp_path):
+    path = tmp_path / "state.json"
+    st = State(collision_streak=2)
+    statemod.save(st, path)
+    assert statemod.load(path).collision_streak == 2
+    assert State().collision_streak == 0
+
+
+def test_collision_pause_threshold_default():
+    assert cfgmod.Config().safety.collision_pause_threshold == 3

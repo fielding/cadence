@@ -396,9 +396,9 @@ def pause():
 
 @app.command()
 def resume():
-    """Arm/resume automation."""
+    """Arm/resume automation (also clears a collision pause)."""
     logging_setup.setup()
-    _set_state(paused=False, enabled=True)
+    _set_state(paused=False, enabled=True, collision_streak=0)
     typer.secho("resumed (armed)", fg=typer.colors.GREEN)
 
 

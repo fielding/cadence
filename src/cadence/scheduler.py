@@ -481,10 +481,24 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                     moved = await captain.transition(st, target, action.reason)
                 except CollisionDetected as e:
                     log.error("collision during transition: %s", e)
-                    notify.notify("cadence", f"Desk stopped short: {e}. Snoozing 5m.")
                     st = load_state()
                     st.pending = None
-                    st.snooze_until = time.time() + 300
+                    st.collision_streak += 1
+                    if st.collision_streak >= cfg.safety.collision_pause_threshold:
+                        st.paused = True
+                        log.error(
+                            "%d consecutive collisions; pausing automation",
+                            st.collision_streak,
+                        )
+                        notify.notify(
+                            "cadence",
+                            f"Paused after {st.collision_streak} collisions in a row. "
+                            "Clear the desk (or lower anti-collision sensitivity), "
+                            "then run `cadence resume`.",
+                        )
+                    else:
+                        st.snooze_until = time.time() + 300
+                        notify.notify("cadence", f"Desk stopped short: {e}. Snoozing 5m.")
                     save_state(st)
                     continue
                 # consume one-shot + reset cycle bookkeeping
@@ -495,6 +509,7 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                     st.posture = target
                     st.phase_started_at = time.time()
                     st.last_auto_move_at = time.time()
+                    st.collision_streak = 0
                 else:
                     # Blocked by a safety guard; don't spin on it.
                     await _sleep_until_woken(wake, POLL_CAP_SECONDS)

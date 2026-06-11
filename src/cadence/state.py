@@ -35,6 +35,10 @@ class State:
     posture: Posture = "unknown"   # last posture we moved to
     phase_started_at: float | None = None  # when the current sit/stand phase began
 
+    # Consecutive collisions without a successful move; the daemon pauses
+    # automation when this reaches the configured threshold.
+    collision_streak: int = 0
+
     # Observations
     last_known_raw_height: int | None = None
     last_known_inches: float | None = None
