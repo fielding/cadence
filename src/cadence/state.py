@@ -38,6 +38,9 @@ class State:
     # Consecutive collisions without a successful move; the daemon pauses
     # automation when this reaches the configured threshold.
     collision_streak: int = 0
+    # Consecutive user vetoes of the same due transition; a second veto
+    # restarts the current phase instead of re-asking every snooze.
+    interrupt_streak: int = 0
 
     # Observations
     last_known_raw_height: int | None = None

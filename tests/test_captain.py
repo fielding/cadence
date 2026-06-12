@@ -62,6 +62,10 @@ class FakeClient:
             # Anti-collision: contact 3in short, then back off 1.8in.
             contact = target_raw - toward * 30
             self._play([contact, contact - toward * 18])
+        elif self.behavior == "drive_home":
+            # User holds the opposite button until the desk is back at start.
+            partway = cur + toward * 43
+            self._play([partway, cur])
         # "ignore": height never changes
 
 
@@ -140,3 +144,11 @@ def test_tap_skipped_when_height_unknown(fast_sleep):
     captain = _captain(client)
     asyncio.run(captain._tap())
     assert client.commands == []
+
+
+def test_drive_home_veto_is_interrupt_despite_big_reversal(fast_sleep):
+    """Holding DOWN until the desk returns to start is a veto, not a crash."""
+    client = FakeClient(26.9, behavior="drive_home")
+    captain = _captain(client)
+    with pytest.raises(MoveInterrupted):
+        asyncio.run(captain.move_to(44.9))

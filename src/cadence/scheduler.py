@@ -271,7 +271,12 @@ class Captain:
                 reversal = 0.0
                 if extreme:
                     reversal = (extreme[0] - final) if going_up else (final - extreme[0])
-                if reversal > 1.2:
+                # Anti-collision stops mid-travel (contact minus ~1.8in); only
+                # a human drives the desk back to where it started.
+                returned_home = (
+                    start is not None and final is not None and abs(final - start) <= 0.6
+                )
+                if reversal > 1.2 and not returned_home:
                     raise CollisionDetected(
                         f"desk settled at {final:.1f}in, expected {target_inches:.1f}in "
                         f"after backing off {reversal:.1f}in (obstruction)"
@@ -522,15 +527,28 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                 try:
                     moved = await captain.transition(st, target, action.reason)
                 except MoveInterrupted as e:
-                    mins = cfg.behavior.snooze_minutes
-                    log.info("user interrupted the move (%s); snoozing %.0fm", e, mins)
-                    notify.notify(
-                        "cadence",
-                        f"Got it — staying put. I'll ask again in {mins:.0f} minutes.",
-                    )
                     st = load_state()
                     st.pending = None
-                    st.snooze_until = time.time() + mins * 60
+                    st.interrupt_streak += 1
+                    if st.interrupt_streak >= 2:
+                        # Two vetoes of the same transition: they mean it.
+                        # Restart the current phase and stop asking.
+                        log.info("second veto (%s); restarting %s phase", e, st.posture)
+                        notify.notify(
+                            "cadence",
+                            f"Understood — restarting your {st.posture} timer.",
+                        )
+                        st.phase_started_at = time.time()
+                        st.snooze_until = None
+                        st.interrupt_streak = 0
+                    else:
+                        mins = cfg.behavior.snooze_minutes
+                        log.info("user interrupted the move (%s); snoozing %.0fm", e, mins)
+                        notify.notify(
+                            "cadence",
+                            f"Got it — staying put. I'll ask again in {mins:.0f} minutes.",
+                        )
+                        st.snooze_until = time.time() + mins * 60
                     save_state(st)
                     continue
                 except CollisionDetected as e:
@@ -564,6 +582,7 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                     st.phase_started_at = time.time()
                     st.last_auto_move_at = time.time()
                     st.collision_streak = 0
+                    st.interrupt_streak = 0
                 else:
                     # Blocked by a safety guard; don't spin on it.
                     await _sleep_until_woken(wake, POLL_CAP_SECONDS)
