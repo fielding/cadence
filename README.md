@@ -1,6 +1,11 @@
-# cadence
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
+    <img src="assets/logo.png" alt="cadence" width="300">
+  </picture>
+</p>
 
-I sit too long. You probably do too.
+<p align="center"><em>I sit too long. You probably do too.</em></p>
 
 cadence is a sit/stand captain for my **Deskhaus Apex Pro**: a local daemon
 that talks to the desk over Bluetooth LE and alternates between my saved
