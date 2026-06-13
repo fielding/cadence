@@ -38,6 +38,16 @@ days = ["mon", "tue", "wed", "thu", "fri"]
 start = "09:00"
 end = "18:00"
 
+# A nightly window where the desk never moves — for when it shares a room with
+# someone asleep. Off by default. The window may wrap midnight (start > end).
+# Unlike working_hours, this holds even with the schedule running 24/7; when it
+# lifts the captain re-reads posture and restarts the phase instead of firing
+# an overnight-overdue move immediately.
+[quiet_hours]
+enabled = false
+start = "22:00"
+end = "07:00"
+
 [behavior]
 snooze_minutes = 15
 reset_timer_on_manual_move = true

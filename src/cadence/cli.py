@@ -142,6 +142,10 @@ def status(verbose: bool = typer.Option(False, "--verbose", "-v")):
                f"warn={cfg.schedule.warning_seconds}s enabled={cfg.schedule.enabled}")
     typer.echo(f"Captain:  enabled={st.enabled} paused={st.paused} posture={st.posture} "
                f"pending={st.pending}")
+    if cfg.quiet_hours.enabled:
+        in_quiet = scheduler.within_quiet_hours(cfg, time.time())
+        typer.echo(f"Quiet:    {cfg.quiet_hours.start}–{cfg.quiet_hours.end} "
+                   f"({'active now' if in_quiet else 'inactive'})")
     if st.phase_started_at:
         elapsed = (time.time() - st.phase_started_at) / 60
         typer.echo(f"          phase elapsed {elapsed:.1f}m")

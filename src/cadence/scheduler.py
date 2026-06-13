@@ -67,6 +67,26 @@ def within_working_hours(cfg: Config, now: float) -> bool:
     return _minutes(wh.start) <= cur < _minutes(wh.end)
 
 
+def within_quiet_hours(cfg: Config, now: float) -> bool:
+    """Whether now falls inside the no-move quiet window.
+
+    Unlike working hours, the quiet window usually wraps midnight (e.g.
+    22:00–07:00), so start > end means "after start OR before end". A
+    zero-length window (start == end) is treated as no quiet hours.
+    """
+    qh = cfg.quiet_hours
+    if not qh.enabled:
+        return False
+    dt = datetime.fromtimestamp(now)
+    cur = dt.hour * 60 + dt.minute
+    start, end = _minutes(qh.start), _minutes(qh.end)
+    if start == end:
+        return False
+    if start < end:
+        return start <= cur < end
+    return cur >= start or cur < end
+
+
 # --- Pure decision -----------------------------------------------------------
 
 @dataclass
@@ -88,6 +108,11 @@ def decide(cfg: Config, state: State, now: float, idle_seconds: float | None = N
 
     if not within_working_hours(cfg, now):
         return Action("sleep", POLL_CAP_SECONDS, reason="outside working hours")
+
+    # Quiet hours override everything below: the desk holds still through the
+    # night. The run loop eases the phase back in when the window lifts.
+    if within_quiet_hours(cfg, now):
+        return Action("sleep", POLL_CAP_SECONDS, reason="quiet hours")
 
     if (
         cfg.presence.enabled
@@ -472,6 +497,7 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
         await client.read_height(wait=3.0)  # prime latest_height
         last_poll = time.time()
         was_idle = False
+        was_quiet = False
         while True:
             st = load_state()
             now = time.time()
@@ -506,6 +532,22 @@ async def _run_connected(cfg: Config, wake: asyncio.Event) -> None:
                     st.phase_started_at = now
                 save_state(st)
             was_idle = is_idle
+
+            # Ease in when quiet hours lift: the desk held still all night, so
+            # don't fire an overnight-overdue transition the instant the window
+            # ends. Re-derive posture from the actual height (it may have been
+            # moved by hand overnight) and restart the phase, so the next move
+            # is a full phase away. Mirrors the idle-return reset above.
+            is_quiet = within_quiet_hours(cfg, now)
+            if was_quiet and not is_quiet:
+                cur = captain.current_inches()
+                derived = nearest_posture(cfg, cur) if cur is not None else st.posture
+                st.posture = derived
+                st.phase_started_at = now
+                st.snooze_until = None
+                save_state(st)
+                log.info("quiet hours ended; resetting phase timer (posture=%s)", derived)
+            was_quiet = is_quiet
 
             action = decide(cfg, st, now, idle_seconds=idle)
 

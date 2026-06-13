@@ -71,6 +71,23 @@ class WorkingHours:
 
 
 @dataclass
+class QuietHours:
+    """A nightly window in which the desk never moves.
+
+    Distinct from working_hours: that gates the schedule to a positive window
+    (and is off by default); this carves out a quiet block that holds even when
+    the schedule otherwise runs around the clock. The window normally wraps
+    midnight (start > end), which within_quiet_hours handles. When it ends, the
+    daemon eases in — re-deriving posture and restarting the phase — rather than
+    firing an overnight-overdue transition the instant it lifts.
+    """
+
+    enabled: bool = False
+    start: str = "22:00"
+    end: str = "07:00"
+
+
+@dataclass
 class Behavior:
     snooze_minutes: float = 15.0
     reset_timer_on_manual_move: bool = True
@@ -135,6 +152,7 @@ class Config:
     warning: Warning = field(default_factory=Warning)
     safety: Safety = field(default_factory=Safety)
     working_hours: WorkingHours = field(default_factory=WorkingHours)
+    quiet_hours: QuietHours = field(default_factory=QuietHours)
     behavior: Behavior = field(default_factory=Behavior)
     presence: Presence = field(default_factory=Presence)
     calibration: Calibration = field(default_factory=Calibration)
@@ -149,6 +167,7 @@ _SECTION_TYPES: dict[str, type] = {
     "warning": Warning,
     "safety": Safety,
     "working_hours": WorkingHours,
+    "quiet_hours": QuietHours,
     "behavior": Behavior,
     "presence": Presence,
     "calibration": Calibration,

@@ -33,6 +33,53 @@ def test_weekend_excluded():
     assert not scheduler.within_working_hours(cfg, _ts(2026, 6, 13, 10, 0))  # Saturday
 
 
+# --- quiet hours -------------------------------------------------------------
+
+def test_disabled_quiet_hours_never_within():
+    cfg = Config()  # disabled by default
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 4, 0))  # 4am
+
+
+def test_quiet_hours_wraps_midnight():
+    cfg = Config()
+    cfg.quiet_hours.enabled = True  # default 22:00–07:00
+    assert scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 23, 0))  # before midnight
+    assert scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 4, 0))   # after midnight
+    assert scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 22, 0))  # start inclusive
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 7, 0))   # end exclusive
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 12, 0))  # midday
+
+
+def test_quiet_hours_same_day_window():
+    cfg = Config()
+    cfg.quiet_hours.enabled = True
+    cfg.quiet_hours.start = "13:00"
+    cfg.quiet_hours.end = "14:00"  # a daytime block that does not wrap
+    assert scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 13, 30))
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 14, 0))  # end exclusive
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 3, 0))
+
+
+def test_quiet_hours_zero_length_is_off():
+    cfg = Config()
+    cfg.quiet_hours.enabled = True
+    cfg.quiet_hours.start = "07:00"
+    cfg.quiet_hours.end = "07:00"
+    assert not scheduler.within_quiet_hours(cfg, _ts(2026, 6, 13, 7, 0))
+
+
+def test_quiet_hours_gate_suppresses_transition():
+    from cadence.state import State
+
+    cfg = Config()
+    cfg.quiet_hours.enabled = True  # 22:00–07:00
+    st = State(enabled=True, posture="sit", phase_started_at=0.0)
+    # Sit phase is long overdue, but it's 4am: decide must hold.
+    action = scheduler.decide(cfg, st, _ts(2026, 6, 13, 4, 0), idle_seconds=0.0)
+    assert action.kind == "sleep"
+    assert action.reason == "quiet hours"
+
+
 # --- BLE heuristics ----------------------------------------------------------
 
 def test_looks_like_desk_by_name():

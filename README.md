@@ -104,7 +104,8 @@ Run it in the background via launchd:
 
 The default cycle: **sit 45m → warn → stand → stand 15m → warn → sit → repeat.**
 Edit `~/.config/cadence/config.toml` for timing, heights, warning mode, safety
-bounds, and working hours. See [`examples/config.toml`](examples/config.toml).
+bounds, working hours, and quiet hours. See
+[`examples/config.toml`](examples/config.toml).
 
 The captain also watches whether you're actually at the computer, judged by
 time since your last keyboard or mouse input. A due move only fires if you've
@@ -114,6 +115,14 @@ come back and the current phase restarts instead of firing an overdue move at
 you the second the mouse twitches. Keep-awake apps like Caffeine don't
 confuse this check... they keep the display on, but they don't fake input.
 Configure under `[presence]`.
+
+For a desk that shares a room with people asleep, `[quiet_hours]` carves out a
+nightly window where it never moves (the desk is quiet, but not silent). It's
+off by default; enable it and set `start`/`end` — the window wraps midnight, so
+`22:00`–`07:00` does what you'd expect. Unlike working hours, this holds even
+when the schedule otherwise runs around the clock. When the window lifts the
+captain eases back in: it re-reads your posture and restarts the phase instead
+of slamming the desk the instant quiet hours end.
 
 ## Safety model
 
